@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SmartGlow 🌸
 
-## Getting Started
+**SmartGlow** est un écosystème de santé dermatologique préventif conçu pour accompagner la femme dans la gestion quotidienne de sa peau grâce à l'Intelligence Artificielle Générative.  
+Face aux agressions environnementales et à l'opacité des produits cosmétiques, SmartGlow propose une solution dynamique et hyper-personnalisée.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Fonctionnalités Principales
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 🤳 1. Selfie Scanner & Diagnostic Visuel
+Contrairement aux simples filtres de beauté, cette fonctionnalité utilise la puissance multimodale de l'IA **Gemini** pour effectuer une lecture scientifique du derme.  
+- **Analyse de marqueurs précis :** L'IA segmente l'image pour analyser la dilatation des pores, les zones d'inflammation (rougeurs, acné) et le niveau de sécheresse cutanée.  
+- **Intelligence contextuelle :** L'analyse intègre l'âge de l'utilisatrice pour adapter les besoins en collagène ou en renouvellement cellulaire.  
+- **Rapports de progrès :** L'IA compare les selfies historiques avec le dernier scan pour générer un rapport de progression visuel.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🌦️ 2. "Climate-Sync" : La Routine Dynamique
+Une réponse proactive à l'instabilité de l'environnement urbain, comme la pollution ou les variations d'UV.  
+- **Synchronisation GPS :** Utilise les coordonnées GPS pour anticiper les besoins de la peau via des API météo et de qualité de l'air.  
+- **Scénarios d'IA Actionnables :**  
+  - **Pic de pollution :** Injection automatique d'un "Bouclier Antioxydant" (vitamine C ou E) dans la routine.  
+  - **Stress Hydrique :** Suggestion immédiate d'une crème riche en céramides en cas de chute d'humidité.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🔍 3. Product Scanner & "Safe-Swap"
+Agit comme un pharmacien personnel pour garantir que chaque produit est bénéfique pour la santé.  
+- **Analyse d'interaction (Mistral) :** Vérifie la compatibilité d'un nouveau produit avec la routine existante stockée sur **Supabase**.  
+- **Prévention des risques :** Bloque l'usage simultané d'ingrédients incompatibles (ex: Rétinol et acides forts).  
+- **Moteur "Safe-Swap" :** Identifie les perturbateurs endocriniens ou ingrédients nocifs et propose immédiatement un équivalent sain et compatible.
 
-## Learn More
+### 🎙️ 4. Coaching Vocal & Interface Humanisée
+Évite la froideur des rapports textuels pour une expérience plus engageante.  
+- **Synthèse vocale (ElevenLabs) :** Les conclusions sont synthétisées avec une voix naturelle et rassurante.  
+- **Expérience Audio :** Recevez votre traitement et vos conseils directement à l'oreille.
 
-To learn more about Next.js, take a look at the following resources:
+### 💬 5. Suivi Automatique via WhatsApp
+Maximise l'assiduité au traitement en utilisant un canal de communication familier.  
+- **Rappels Personnalisés :** Envoi de rappels doux calqués sur les habitudes de vie de l'utilisatrice.  
+- **Suivi de progression :** Conseils météo et rapports envoyés directement là où vous êtes déjà.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 🩺 6. Portail Premium Dermatologue
+Une extension dédiée aux professionnels pour renforcer le lien de confiance entre la patiente et son médecin.  
+- **Suivi à distance :** Permet aux dermatologues de suivre l'évolution visuelle de la peau grâce à l'historique des scans.  
+- **Précision médicale :** Garantit une continuité de soin entre deux consultations physiques.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Synergie Technologique
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Technologie | Rôle Principal |
+| :--- | :--- |
+| **Gemini** | Diagnostic visuel scientifique via Selfie Scanner. |
+| **Mistral** | Analyse des ingrédients (INCI) et raisonnement sur les interactions. |
+| **ElevenLabs** | Synthèse vocale naturelle pour le coaching audio. |
+| **Supabase** | Architecture technique sécurisée pour le stockage des profils et routines. |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+*Réalisé par : Essadqui Soumia & Assif Omaima*
