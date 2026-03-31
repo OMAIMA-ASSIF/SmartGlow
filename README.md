@@ -49,4 +49,3 @@ Maximise l'assiduité au traitement en utilisant un canal de communication famil
 
 ---
 
-*Réalisé par : Essadqui Soumia & Assif Omaima*
