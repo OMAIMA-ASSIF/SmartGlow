@@ -36,11 +36,6 @@ Maximise l'assiduité au traitement en utilisant un canal de communication famil
 - **Rappels Personnalisés :** Envoi de rappels doux calqués sur les habitudes de vie de l'utilisatrice.  
 - **Suivi de progression :** Conseils météo et rapports envoyés directement là où vous êtes déjà.
 
-### 🩺 6. Portail Premium Dermatologue
-Une extension dédiée aux professionnels pour renforcer le lien de confiance entre la patiente et son médecin.  
-- **Suivi à distance :** Permet aux dermatologues de suivre l'évolution visuelle de la peau grâce à l'historique des scans.  
-- **Précision médicale :** Garantit une continuité de soin entre deux consultations physiques.
-
 ---
 
 ## 🛠️ Synergie Technologique
