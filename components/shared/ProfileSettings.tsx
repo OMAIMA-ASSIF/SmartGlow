@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Calendar, Loader2, CheckCircle } from "lucide-react"
+import { User, Calendar, Loader2, CheckCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
@@ -77,7 +76,6 @@ export function ProfileSettings() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Non connecté")
 
-      // Build update object — only include birth_date if column exists
       const updateData: Record<string, any> = {
         full_name: fullName,
         skin_type: skinType || null,
@@ -85,10 +83,9 @@ export function ProfileSettings() {
         updated_at: new Date().toISOString(),
       }
 
-      // Add age if birth_date is set (calculated server-side via birth_date column)
       if (birthDate) {
         updateData.birth_date = birthDate
-        updateData.age = calculatedAge // keep age column in sync for backward compat
+        updateData.age = calculatedAge
       }
 
       const { error } = await supabase
@@ -97,10 +94,9 @@ export function ProfileSettings() {
         .eq("user_id", user.id)
 
       if (error) throw error
-      toast.success("Profil mis à jour ")
+      toast.success("Profil mis à jour ✓")
       setSaved(true)
     } catch (e: any) {
-      // If birth_date column doesn't exist yet, save without it
       if (e.message?.includes("birth_date")) {
         try {
           const { data: { user } } = await supabase.auth.getUser()
@@ -112,8 +108,7 @@ export function ProfileSettings() {
             age: calculatedAge,
             updated_at: new Date().toISOString(),
           }).eq("user_id", user.id)
-          toast.success("Profil mis à jour ")
-          toast.info("Note : Exécutez le SQL d'upgrade dans Supabase pour activer la date de naissance complète.")
+          toast.success("Profil mis à jour ✓")
           setSaved(true)
         } catch (e2: any) {
           toast.error(e2.message || "Erreur de sauvegarde")
@@ -127,37 +122,46 @@ export function ProfileSettings() {
   }
 
   return (
-    <Card className="glass-panel border-0 shadow-lg relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full -mr-20 -mt-20 pointer-events-none" />
+    <div className="glass-card p-6 relative overflow-hidden">
+      {/* Decorative glow */}
+      <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
 
-      <CardHeader>
-        <div className="flex justify-between items-start mb-2">
-          <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center">
-            <User className="w-6 h-6 text-rose-600" />
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-md shadow-rose-500/25 flex items-center justify-center">
+            <User className="w-5 h-5 text-white" />
           </div>
-          {saved && <Badge className="bg-emerald-500"><CheckCircle className="w-3 h-3 mr-1" /> Sauvegardé</Badge>}
+          <div>
+            <h3 className="font-bold heading-font text-lg">Mon Profil</h3>
+            <p className="text-xs text-muted-foreground">Profil dermatologique personnalisé</p>
+          </div>
         </div>
-        <CardTitle className="text-2xl heading-font mt-4">Mon Profil</CardTitle>
-        <CardDescription>Votre profil dermatologique personnalisé — utilisé par toutes les IAs SmartGlow.</CardDescription>
-      </CardHeader>
+        {saved && (
+          <Badge className="bg-emerald-500 text-white rounded-full gap-1 text-xs">
+            <CheckCircle className="w-3 h-3" /> Sauvegardé
+          </Badge>
+        )}
+      </div>
 
-      <CardContent className="space-y-6">
-        {/* Nom */}
-        <div className="grid gap-2">
-          <Label htmlFor="fullName">Prénom & Nom</Label>
+      <div className="space-y-5 relative z-10">
+        {/* Name */}
+        <div className="space-y-1.5">
+          <Label htmlFor="fullName" className="text-sm font-semibold">Prénom & Nom</Label>
           <Input
             id="fullName"
             value={fullName}
             onChange={e => setFullName(e.target.value)}
             placeholder="Meriem Harrouch"
-            className="rounded-xl"
+            className="h-11 rounded-xl glass border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
-        {/* Date de naissance + âge calculé */}
-        <div className="grid gap-2">
-          <Label htmlFor="birthDate" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" /> Date de naissance
+        {/* Birth date */}
+        <div className="space-y-1.5">
+          <Label htmlFor="birthDate" className="text-sm font-semibold flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+            Date de naissance
           </Label>
           <div className="flex gap-3 items-center">
             <Input
@@ -166,27 +170,27 @@ export function ProfileSettings() {
               value={birthDate}
               onChange={e => setBirthDate(e.target.value)}
               max={new Date().toISOString().split("T")[0]}
-              className="rounded-xl flex-1"
+              className="h-11 rounded-xl glass border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 flex-1"
             />
             {calculatedAge !== null && (
-              <div className="shrink-0 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap">
+              <div className="shrink-0 h-11 flex items-center px-4 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-bold whitespace-nowrap">
                 {calculatedAge} ans
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            L'âge est calculé automatiquement et utilisé pour personnaliser votre analyse de peau et vos recommandations produits.
+          <p className="text-[11px] text-muted-foreground pl-0.5">
+            Utilisé pour personnaliser vos recommandations produits.
           </p>
         </div>
 
-        {/* Type de peau */}
-        <div className="grid gap-2">
-          <Label>Type de peau</Label>
+        {/* Skin type */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-semibold">Type de peau</Label>
           <Select value={skinType} onValueChange={(val: string | null) => setSkinType(val ?? skinType)}>
-            <SelectTrigger className="rounded-xl">
-              <SelectValue placeholder="Sélectionner..." />
+            <SelectTrigger className="h-11 rounded-xl glass border-border/50 focus:ring-2 focus:ring-primary/20">
+              <SelectValue placeholder="Sélectionner votre type…" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               {SKIN_TYPES.map(t => (
                 <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
               ))}
@@ -194,19 +198,20 @@ export function ProfileSettings() {
           </Select>
         </div>
 
-        {/* Préoccupations */}
-        <div className="grid gap-2">
-          <Label>Préoccupations cutanées</Label>
+        {/* Skin concerns */}
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Préoccupations cutanées</Label>
           <div className="flex flex-wrap gap-2">
             {SKIN_CONCERNS.map(concern => (
               <button
                 key={concern}
                 type="button"
                 onClick={() => toggleConcern(concern)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${skinConcerns.includes(concern)
-                  ? "bg-rose-500 text-white border-rose-500"
-                  : "bg-white/60 text-gray-600 border-gray-200 hover:border-rose-300"
-                  }`}
+                className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all duration-150 ${
+                  skinConcerns.includes(concern)
+                    ? "bg-gradient-to-r from-primary to-secondary text-white border-primary/50 shadow-sm shadow-primary/20"
+                    : "bg-white/50 dark:bg-white/5 text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                }`}
               >
                 {concern}
               </button>
@@ -214,15 +219,19 @@ export function ProfileSettings() {
           </div>
         </div>
 
+        {/* Save button */}
         <Button
           onClick={save}
           disabled={isSaving}
-          className="w-full rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold h-12"
+          className="w-full h-11 rounded-xl font-semibold premium-button shadow-md shadow-primary/20"
         >
-          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          Sauvegarder le profil
+          {isSaving ? (
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sauvegarde…</>
+          ) : (
+            <><Sparkles className="w-4 h-4 mr-2" /> Sauvegarder le profil</>
+          )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

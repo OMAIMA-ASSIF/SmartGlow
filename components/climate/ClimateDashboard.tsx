@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CloudSun, Sun, MapPin, Droplets, Wind, Zap, RefreshCw, Loader2, ArrowRight, MessageCircle } from "lucide-react"
+import {
+  CloudSun, Sun, MapPin, Droplets, Wind, Zap,
+  RefreshCw, Loader2, ArrowRight, MessageCircle, AlertTriangle
+} from "lucide-react"
 import { toast } from "sonner"
 import type { OpenWeatherData } from "@/lib/openweather"
 import { getUVCategory, getAQICategory } from "@/lib/openweather"
@@ -21,7 +23,7 @@ export function ClimateDashboard() {
 
   const fetchClimateData = () => {
     setIsFetching(true)
-    
+
     if (!navigator.geolocation) {
       toast.error("La géolocalisation n'est pas supportée par votre navigateur.")
       setIsFetching(false)
@@ -34,15 +36,12 @@ export function ClimateDashboard() {
         setLocationPermitted(true)
         try {
           const { latitude, longitude } = position.coords
-          
           const response = await fetch("/api/climate-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: latitude, lon: longitude })
+            body: JSON.stringify({ lat: latitude, lon: longitude }),
           })
-
           if (!response.ok) throw new Error("Erreur de synchronisation météo")
-
           const data = await response.json()
           setWeather(data.weather)
           setRoutine(data.routine)
@@ -53,7 +52,6 @@ export function ClimateDashboard() {
           } else {
             toast.success("Routine adaptée en temps réel !")
           }
-          
         } catch (error: any) {
           toast.error(error.message || "Impossible d'analyser la météo")
         } finally {
@@ -63,8 +61,7 @@ export function ClimateDashboard() {
       (error) => {
         setIsFetching(false)
         setLocationPermitted(false)
-        
-        switch(error.code) {
+        switch (error.code) {
           case error.PERMISSION_DENIED:
             toast.error("Veuillez autoriser la géolocalisation pour Climate-Sync.")
             break
@@ -76,39 +73,63 @@ export function ClimateDashboard() {
             break
           default:
             toast.error("Une erreur inconnue est survenue.")
-            break
         }
       }
     )
   }
 
-  // Effectuer la requête au premier rendu si on veut
   useEffect(() => {
-    // Optionnel: lancer automatiquement
+    // Optional: auto-fetch on mount
     // fetchClimateData()
   }, [])
 
+  /* ── Empty state ── */
   if (!weather || !routine) {
     return (
-      <Card className="glass-panel border-0 shadow-lg p-10 flex flex-col items-center justify-center text-center min-h-[500px]">
-        <div className="bg-amber-100 p-4 rounded-full mb-6">
-          <CloudSun className="w-12 h-12 text-amber-500" />
+      <div className="glass-card p-10 md:p-14 flex flex-col items-center justify-center text-center min-h-[480px] relative overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-orange-400/8 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col items-center gap-6">
+          {/* Animated icon */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-2xl animate-glow" />
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30 flex items-center justify-center">
+              <CloudSun className="w-10 h-10 text-white" />
+            </div>
+          </div>
+
+          <div className="space-y-2 max-w-md">
+            <h3 className="text-2xl font-bold heading-font">Météo & Sensibilité cutanée</h3>
+            <p className="text-muted-foreground leading-relaxed text-sm">
+              Activez la géolocalisation pour analyser l'indice UV, la pollution (PM2.5) et l'humidité autour de vous.
+              Mistral IA adaptera immédiatement votre routine de soins.
+            </p>
+          </div>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {["☀️ Indice UV", "🌬️ Qualité de l'air", "💧 Humidité", "🤖 Mistral IA"].map((pill) => (
+              <span key={pill} className="premium-badge text-xs">{pill}</span>
+            ))}
+          </div>
+
+          <Button
+            size="lg"
+            onClick={fetchClimateData}
+            disabled={isFetching}
+            className="rounded-2xl h-13 px-8 font-semibold shadow-lg shadow-amber-500/25
+                       bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600
+                       text-white premium-button mt-2"
+          >
+            {isFetching
+              ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Localisation…</>
+              : <><MapPin className="w-5 h-5 mr-2" /> Synchroniser ma position GPS</>
+            }
+          </Button>
         </div>
-        <h3 className="text-2xl font-bold heading-font mb-4">Météo & Sensibilité cutanée</h3>
-        <p className="text-muted-foreground max-w-md mb-8">
-          Activez la géolocalisation pour analyser l'indice UV, la pollution (PM2.5) et l'humidité autour de vous. 
-          Mistral IA adaptera immédiatement votre routine de soins.
-        </p>
-        <Button 
-          size="lg" 
-          onClick={fetchClimateData} 
-          disabled={isFetching}
-          className="rounded-full shadow-lg shadow-primary/20 bg-amber-500 hover:bg-amber-600 text-white px-8 h-14"
-        >
-          {isFetching ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <MapPin className="w-5 h-5 mr-3" />}
-          Synchroniser ma position gps
-        </Button>
-      </Card>
+      </div>
     )
   }
 
@@ -116,132 +137,185 @@ export function ClimateDashboard() {
   const aqiCat = getAQICategory(weather.pm25)
 
   return (
-    <div className="grid lg:grid-cols-[1fr_450px] gap-8">
-      {/* Weather Dashboard Widget */}
-      <div className="space-y-6">
-        <Card className="glass-panel border-0 shadow-lg overflow-hidden relative">
-          {/* Dynamic background based on weather */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-blue-100/10 to-transparent dark:from-blue-900/30"></div>
-          
-          <CardHeader className="relative z-10 pb-2">
-            <div className="flex justify-between items-start">
+    <div className="grid lg:grid-cols-[1fr_420px] gap-6">
+
+      {/* ── Left – Weather + Summary ── */}
+      <div className="space-y-5">
+
+        {/* Main weather card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="glass-card p-6 relative overflow-hidden"
+        >
+          {/* Gradient bg */}
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-400/8 via-blue-300/5 to-transparent dark:from-sky-900/15 pointer-events-none rounded-[1.25rem]" />
+
+          <div className="relative z-10">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <CardTitle className="text-3xl heading-font">{weather.city}</CardTitle>
-                <CardDescription className="flex items-center gap-1 mt-1 font-medium capitalize">
-                  {weather.description} • {Math.round(weather.temperature)}°C
-                </CardDescription>
+                <h3 className="text-2xl font-bold heading-font">{weather.city}</h3>
+                <p className="text-sm text-muted-foreground font-medium capitalize mt-0.5">
+                  {weather.description} · {Math.round(weather.temperature)}°C
+                </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={fetchClimateData} disabled={isFetching} className="rounded-full bg-white/50 backdrop-blur-sm">
-                <RefreshCw className={`w-5 h-5 ${isFetching ? 'animate-spin' : ''}`} />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={fetchClimateData}
+                disabled={isFetching}
+                className="rounded-xl w-10 h-10 glass-subtle hover:bg-white/50 dark:hover:bg-white/8"
+              >
+                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               </Button>
             </div>
-          </CardHeader>
-          
-          <CardContent className="relative z-10 grid grid-cols-2 lg:grid-cols-3 gap-4 pt-6">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
-              <Card className="border-0 shadow-sm bg-white/70 dark:bg-black/30 backdrop-blur-md">
-                <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                  <Sun className="w-8 h-8 mb-2" style={{ color: uvCat.color }} />
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">UV Index</p>
-                  <p className="text-2xl font-bold font-mono">{weather.uv_index.toFixed(1)}</p>
-                  <Badge variant="outline" className="mt-2 text-xs" style={{ borderColor: uvCat.color, color: uvCat.color }}>{uvCat.label}</Badge>
-                </CardContent>
-              </Card>
-            </motion.div>
 
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-              <Card className="border-0 shadow-sm bg-white/70 dark:bg-black/30 backdrop-blur-md">
-                <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                  <Wind className="w-8 h-8 mb-2" style={{ color: aqiCat.color }} />
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">PM2.5 (Air)</p>
-                  <p className="text-2xl font-bold font-mono">{weather.pm25.toFixed(1)}</p>
-                  <Badge variant="outline" className="mt-2 text-xs" style={{ borderColor: aqiCat.color, color: aqiCat.color }}>{aqiCat.label}</Badge>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {/* Metric cards */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* UV */}
+              <motion.div
+                initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
+                className="glass-subtle rounded-2xl p-4 flex flex-col items-center text-center"
+              >
+                <Sun className="w-7 h-7 mb-2" style={{ color: uvCat.color }} />
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">UV Index</p>
+                <p className="text-2xl font-bold font-mono">{weather.uv_index.toFixed(1)}</p>
+                <Badge
+                  variant="outline"
+                  className="mt-2 text-[10px] h-5 rounded-full"
+                  style={{ borderColor: uvCat.color, color: uvCat.color }}
+                >
+                  {uvCat.label}
+                </Badge>
+              </motion.div>
 
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="col-span-2 lg:col-span-1 border-0 lg:border-l-0 lg:border-t-0">
-              <Card className="border-0 shadow-sm bg-white/70 dark:bg-black/30 backdrop-blur-md h-full">
-                <CardContent className="p-4 flex flex-col items-center justify-center text-center h-full">
-                  <Droplets className="w-8 h-8 mb-2 text-blue-500" />
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">Humidité</p>
-                  <p className="text-2xl font-bold font-mono text-blue-500">{weather.humidity}%</p>
-                  <p className="text-[10px] text-muted-foreground mt-2 font-medium">
-                    {weather.humidity < 40 ? "Air très sec" : weather.humidity > 70 ? "Air saturé" : "Humidité idéale"}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </CardContent>
-        </Card>
+              {/* PM2.5 */}
+              <motion.div
+                initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+                className="glass-subtle rounded-2xl p-4 flex flex-col items-center text-center"
+              >
+                <Wind className="w-7 h-7 mb-2" style={{ color: aqiCat.color }} />
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">PM2.5</p>
+                <p className="text-2xl font-bold font-mono">{weather.pm25.toFixed(1)}</p>
+                <Badge
+                  variant="outline"
+                  className="mt-2 text-[10px] h-5 rounded-full"
+                  style={{ borderColor: aqiCat.color, color: aqiCat.color }}
+                >
+                  {aqiCat.label}
+                </Badge>
+              </motion.div>
 
-        {/* WhatsApp auto-alert indicator */}
+              {/* Humidity */}
+              <motion.div
+                initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+                className="glass-subtle rounded-2xl p-4 flex flex-col items-center text-center"
+              >
+                <Droplets className="w-7 h-7 mb-2 text-blue-500" />
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Humidité</p>
+                <p className="text-2xl font-bold font-mono text-blue-500">{weather.humidity}%</p>
+                <p className="text-[10px] text-muted-foreground mt-2 font-medium">
+                  {weather.humidity < 40 ? "Air très sec" : weather.humidity > 70 ? "Air saturé" : "Idéale"}
+                </p>
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* WhatsApp auto-alert banner */}
         {whatsappAlertSent && whatsappAlertText && (
-          <Card className="bg-green-600 text-white border-0 shadow-xl shadow-green-500/20 relative overflow-hidden">
-            <CardContent className="p-5 flex items-start gap-4">
-              <MessageCircle className="w-6 h-6 text-white shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold mb-1 text-sm">Alerte WhatsApp envoyée automatiquement</h4>
-                <p className="text-white/90 text-xs leading-relaxed">{whatsappAlertText.split('\n')[0]}</p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card p-5 border border-green-500/25 bg-green-500/5"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 shadow-md flex items-center justify-center shrink-0">
+                <MessageCircle className="w-4 h-4 text-white" />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-sm font-bold text-green-700 dark:text-green-400 mb-0.5">
+                  Alerte WhatsApp envoyée automatiquement
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {whatsappAlertText.split('\n')[0]}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         )}
 
-        {/* Global summary card */}
-        <Card className="bg-primary text-white border-0 shadow-xl shadow-primary/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-          <CardContent className="p-6 relative z-10">
-            <h4 className="font-bold mb-2 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-300" /> Bilan IA de surface :
-            </h4>
-            <p className="text-white/90 text-sm italic border-l-2 border-white/40 pl-3">"{routine.summary_message}"</p>
-          </CardContent>
-        </Card>
+        {/* AI Summary card */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+          className="glass-card p-6 relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/8 to-secondary/5 rounded-[1.25rem] pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary shadow-sm flex items-center justify-center">
+                <Zap className="w-4 h-4 text-white" />
+              </div>
+              <p className="font-bold text-sm">Bilan IA SmartGlow</p>
+            </div>
+            <p className="text-sm text-foreground/80 italic leading-relaxed border-l-2 border-primary/30 pl-3">
+              "{routine.summary_message}"
+            </p>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Routine Adjustments Board */}
+      {/* ── Right – Adjustments ── */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold heading-font flex items-center gap-2">
-          Ordres du jour <ArrowRight className="w-5 h-5 text-muted-foreground" />
-        </h3>
-        
-        <div className="grid gap-3">
-          {routine.adjustments.map((adj, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ x: 20, opacity: 0 }} 
-              animate={{ x: 0, opacity: 1 }} 
-              transition={{ delay: 0.1 * idx }}
-            >
-              <Card className={`glass-panel border-l-4 overflow-hidden shadow-sm relative group ${
-                adj.type === 'add' ? 'border-l-emerald-500' : 
-                adj.type === 'remove' ? 'border-l-destructive' : 
-                'border-l-amber-500'
-              }`}>
-                {/* Visual urgency background indicator */}
-                {adj.urgency === 'high' && <div className="absolute right-0 top-0 bg-red-500/10 h-full w-20 -skew-x-12 translate-x-10"></div>}
-                
-                <CardContent className="p-4 relative z-10 flex gap-4 items-start">
-                  <div className={`p-2 rounded-xl mt-1 shrink-0 ${
-                    adj.type === 'add' ? 'bg-emerald-100 text-emerald-600' : 
-                    adj.type === 'remove' ? 'bg-red-100 text-red-600' : 
-                    'bg-amber-100 text-amber-600'
-                  }`}>
-                    {adj.type === 'add' ? '+' : adj.type === 'remove' ? '-' : '↑'}
+        <div className="flex items-center gap-2 mb-1">
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-bold text-base heading-font">Ajustements de la journée</h3>
+        </div>
+
+        <div className="space-y-3">
+          {routine.adjustments.map((adj, idx) => {
+            const typeConfig = {
+              add: { border: "border-l-emerald-500", icon: "+", iconBg: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
+              remove: { border: "border-l-destructive", icon: "−", iconBg: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" },
+              increase: { border: "border-l-amber-500", icon: "↑", iconBg: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
+            }
+            const config = typeConfig[adj.type as keyof typeof typeConfig] || typeConfig.add
+
+            return (
+              <motion.div
+                key={idx}
+                initial={{ x: 16, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.08 * idx }}
+                className={`glass-card border-l-4 ${config.border} p-4 relative overflow-hidden group`}
+              >
+                {/* Urgency flash */}
+                {adj.urgency === 'high' && (
+                  <div className="absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-red-500/6 to-transparent pointer-events-none" />
+                )}
+
+                <div className="flex gap-3 items-start relative z-10">
+                  <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center font-bold text-sm shrink-0`}>
+                    {config.icon}
                   </div>
-                  <div className="w-full">
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-bold text-sm uppercase tracking-wider">{adj.ingredient}</h4>
-                      {adj.urgency === 'high' && <Badge variant="destructive" className="text-[10px] py-0 h-4">CRITIQUE</Badge>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <h4 className="font-bold text-xs uppercase tracking-wider truncate">{adj.ingredient}</h4>
+                      {adj.urgency === 'high' && (
+                        <Badge variant="destructive" className="text-[10px] py-0 h-4 rounded-full shrink-0 gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" /> CRITIQUE
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium mb-1">Catégorie: {adj.product_category}</p>
-                    <p className="text-sm font-medium leading-tight mt-2">{adj.reason}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium mb-1.5">{adj.product_category}</p>
+                    <p className="text-sm leading-snug text-foreground/80">{adj.reason}</p>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     </div>

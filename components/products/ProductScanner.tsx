@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, AlertTriangle, CheckCircle, Search, ScanLine, Loader2, Sparkles, ShieldAlert, Zap, X } from "lucide-react"
+import {
+  Search, ScanLine, Loader2, Sparkles, ShieldAlert,
+  Zap, X, CheckCircle, RefreshCw
+} from "lucide-react"
 import { toast } from "sonner"
 import type { ProductAnalysisResult } from "@/lib/mistral"
 
@@ -15,36 +17,22 @@ export function ProductScanner() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isScanningBarcode, setIsScanningBarcode] = useState(false)
   const [barcodeResult, setBarcodeResult] = useState<string | null>(null)
-  const [productData, setProductData] = useState<{name: string, brand: string, inci: string} | null>(null)
+  const [productData, setProductData] = useState<{ name: string; brand: string; inci: string } | null>(null)
   const [analysis, setAnalysis] = useState<ProductAnalysisResult | null>(null)
-  
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const stopCamera = useCallback(() => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-      scanIntervalRef.current = null
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
+    if (scanIntervalRef.current) { clearInterval(scanIntervalRef.current); scanIntervalRef.current = null }
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
+    if (videoRef.current) videoRef.current.srcObject = null
   }, [])
 
-  // Start camera + ZXing barcode scan loop
   useEffect(() => {
-    if (!isScanningBarcode) {
-      stopCamera()
-      return
-    }
-
+    if (!isScanningBarcode) { stopCamera(); return }
     let active = true
-
     const startScan = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -52,43 +40,24 @@ export function ProductScanner() {
         })
         if (!active) { stream.getTracks().forEach(t => t.stop()); return }
         streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
-        }
-
-        // Dynamic import to avoid SSR issues
+        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
         const { BrowserMultiFormatReader } = await import("@zxing/library")
         const reader = new BrowserMultiFormatReader()
-
         if (videoRef.current) {
           scanIntervalRef.current = setInterval(() => {
             if (!videoRef.current || !active) return
             try {
               const result = reader.decode(videoRef.current)
-              if (result && active) {
-                setBarcodeResult(result.getText())
-                toast.success(`Code détecté : ${result.getText()}`)
-              }
-            } catch (e) {
-              // NotFoundException means no barcode yet — normal, keep scanning
-            }
+              if (result && active) { setBarcodeResult(result.getText()); toast.success(`Code détecté : ${result.getText()}`) }
+            } catch (e) { /* NotFoundException — normal */ }
           }, 400)
         }
       } catch (err: any) {
-        if (active) {
-          toast.error("Erreur d'accès à la caméra. Vérifiez les permissions.")
-          setIsScanningBarcode(false)
-        }
+        if (active) { toast.error("Erreur d'accès à la caméra."); setIsScanningBarcode(false) }
       }
     }
-
     startScan()
-
-    return () => {
-      active = false
-      stopCamera()
-    }
+    return () => { active = false; stopCamera() }
   }, [isScanningBarcode, stopCamera])
 
   const fetchProductFromOpenFoodFacts = async (barcode: string) => {
@@ -96,7 +65,6 @@ export function ProductScanner() {
     try {
       const res = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`)
       const data = await res.json()
-      
       if (data.status === 1 && data.product) {
         const inci = data.product.ingredients_text_fr || data.product.ingredients_text || ""
         const name = data.product.product_name || "Produit Inconnu"
@@ -104,18 +72,9 @@ export function ProductScanner() {
         setProductData({ name, brand, inci })
         setInciText(inci)
         if (inci) await analyzeINCI(inci, name, brand, barcode)
-        else {
-          toast.warning("Ingrédients introuvables pour ce produit")
-          setIsAnalyzing(false)
-        }
-      } else {
-        toast.error("Produit non répertorié dans Open Beauty Facts")
-        setIsAnalyzing(false)
-      }
-    } catch (error) {
-      toast.error("Erreur de récupération du produit")
-      setIsAnalyzing(false)
-    }
+        else { toast.warning("Ingrédients introuvables pour ce produit"); setIsAnalyzing(false) }
+      } else { toast.error("Produit non répertorié dans Open Beauty Facts"); setIsAnalyzing(false) }
+    } catch { toast.error("Erreur de récupération du produit"); setIsAnalyzing(false) }
   }
 
   const analyzeINCI = async (inci: string, name?: string, brand?: string, barcode?: string | null) => {
@@ -129,230 +88,259 @@ export function ProductScanner() {
       const data = await response.json()
       if (data.success) setAnalysis(data.analysis)
       else toast.error(data.error || "Erreur d'analyse")
-    } catch (error) {
-      toast.error("Erreur d'analyse")
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
-
-  const getSafetyBadge = (score: number) => {
-    if (score >= 80) return <Badge className="bg-emerald-500 hover:bg-emerald-600 rounded-full px-4">Excellent</Badge>
-    if (score >= 50) return <Badge className="bg-amber-500 hover:bg-amber-600 rounded-full px-4">Modéré</Badge>
-    return <Badge className="bg-rose-500 hover:bg-rose-600 rounded-full px-4">Risqué</Badge>
+    } catch { toast.error("Erreur d'analyse") }
+    finally { setIsAnalyzing(false) }
   }
 
   const handleConfirmScan = () => {
-    stopCamera()
-    setIsScanningBarcode(false)
-    if (barcodeResult) {
-      fetchProductFromOpenFoodFacts(barcodeResult)
-    } else {
-      toast.error("Aucun code-barres détecté. Réessayez en tenant le produit bien dans le cadre.")
-    }
+    stopCamera(); setIsScanningBarcode(false)
+    if (barcodeResult) fetchProductFromOpenFoodFacts(barcodeResult)
+    else toast.error("Aucun code-barres détecté. Réessayez.")
   }
 
+  const scoreColor = (s: number) => s >= 80 ? "bg-emerald-500" : s >= 50 ? "bg-amber-500" : "bg-rose-500"
+  const scoreLabel = (s: number) => s >= 80 ? "Excellent" : s >= 50 ? "Modéré" : "Risqué"
+  const scoreBadgeClass = (s: number) => s >= 80
+    ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+    : s >= 50 ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+    : "bg-rose-500/15 text-rose-600 border-rose-500/30"
+
   return (
-    <div className="grid lg:grid-cols-[1fr_450px] gap-8 items-stretch min-h-[500px]">
-      {/* Colonne Gauche */}
-      <div className="space-y-6 flex flex-col">
-        <Tabs defaultValue="manual" className="w-full flex-1 flex flex-col">
-          <TabsList className="flex w-full rounded-2xl h-14 p-1.5 bg-white/40 backdrop-blur-md border border-white/40 shadow-inner">
-            <TabsTrigger 
-              value="manual" 
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl transition-all duration-300 text-sm font-semibold
-                data-[state=active]:!bg-rose-500 data-[state=active]:!text-white data-[state=active]:shadow-lg
-                data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:bg-white/50"
+    <div className="grid lg:grid-cols-[1fr_460px] gap-8 items-start">
+
+      {/* ── Left – Input ── */}
+      <div className="space-y-5">
+        <Tabs defaultValue="manual" className="w-full">
+          {/* Tab bar */}
+          <TabsList className="w-full h-12 p-1 rounded-2xl glass border border-border/40 gap-1">
+            <TabsTrigger
+              value="manual"
+              className="flex-1 h-full rounded-xl text-sm font-semibold gap-2
+                data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary
+                data-[state=active]:text-white data-[state=active]:shadow-md
+                data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
             >
-              <Zap className="w-4 h-4" /> Saisie Manuelle
+              <Zap className="w-4 h-4" /> Saisie INCI
             </TabsTrigger>
-            <TabsTrigger 
-              value="scan" 
-              onClick={() => { setBarcodeResult(null) }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl transition-all duration-300 text-sm font-semibold
-                data-[state=active]:!bg-rose-500 data-[state=active]:!text-white data-[state=active]:shadow-lg
-                data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:bg-white/50"
+            <TabsTrigger
+              value="scan"
+              onClick={() => setBarcodeResult(null)}
+              className="flex-1 h-full rounded-xl text-sm font-semibold gap-2
+                data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary
+                data-[state=active]:text-white data-[state=active]:shadow-md
+                data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
             >
-              <ScanLine className="w-4 h-4" /> Scan Code-barres
+              <ScanLine className="w-4 h-4" /> Code-barres
             </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="manual" className="mt-6 flex-1 focus-visible:outline-none m-0">
-            <Card className="bg-white/60 backdrop-blur-xl border-white/40 shadow-2xl rounded-[2rem] overflow-hidden flex flex-col h-full min-h-[420px]">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-rose-500" /> Analyse INCI
-                </CardTitle>
-                <CardDescription>Décryptez la composition de vos soins en un clic.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <Textarea 
-                  placeholder="Aqua, Glycerin, Niacinamide..." 
-                  className="min-h-[180px] h-full resize-none rounded-2xl bg-white/50 border-rose-100 focus:border-rose-500 focus:ring-rose-500/20 transition-all text-sm"
-                  value={inciText}
-                  onChange={(e) => setInciText(e.target.value)}
-                  disabled={isAnalyzing}
-                />
-              </CardContent>
-              <CardFooter className="pb-6">
-                <Button 
-                  className="w-full rounded-2xl h-14 bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200 transition-all text-base font-semibold group" 
-                  onClick={() => analyzeINCI(inciText, productData?.name, productData?.brand, barcodeResult)}
-                  disabled={isAnalyzing || !inciText.trim()}
-                >
-                  {isAnalyzing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Zap className="mr-2 h-5 w-5 fill-current" />}
-                  Lancer l'analyse personnalisée
-                </Button>
-              </CardFooter>
-            </Card>
+
+          {/* Manual INCI tab */}
+          <TabsContent value="manual" className="mt-4 focus-visible:outline-none">
+            <div className="glass-card p-6 space-y-4">
+              <div>
+                <h3 className="font-bold heading-font mb-1">Analyse INCI manuelle</h3>
+                <p className="text-sm text-muted-foreground">Collez la liste d'ingrédients de votre produit ci-dessous.</p>
+              </div>
+              <Textarea
+                placeholder="Aqua, Glycerin, Niacinamide, Retinol, Salicylic Acid..."
+                className="min-h-[200px] resize-none rounded-2xl glass border-border/50
+                           focus:border-primary/50 focus:ring-2 focus:ring-primary/20 text-sm"
+                value={inciText}
+                onChange={(e) => setInciText(e.target.value)}
+                disabled={isAnalyzing}
+              />
+              {productData && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground p-3 glass-subtle rounded-xl border border-border/30">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span><strong>{productData.name}</strong> · {productData.brand}</span>
+                </div>
+              )}
+              <Button
+                className="w-full h-12 rounded-xl font-semibold shadow-md shadow-primary/20 premium-button"
+                onClick={() => analyzeINCI(inciText, productData?.name, productData?.brand, barcodeResult)}
+                disabled={isAnalyzing || !inciText.trim()}
+              >
+                {isAnalyzing
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyse en cours…</>
+                  : <><Sparkles className="h-4 w-4 mr-2" /> Lancer l'analyse IA</>
+                }
+              </Button>
+            </div>
           </TabsContent>
-          
-          <TabsContent value="scan" className="mt-6 flex-1 focus-visible:outline-none m-0">
-            <Card className="bg-white/60 backdrop-blur-xl border-white/40 shadow-2xl rounded-[2.5rem] overflow-hidden h-full min-h-[420px] flex flex-col">
-              <CardContent className="p-0 w-full flex-1 relative flex flex-col items-center justify-center">
-                {isScanningBarcode ? (
-                  <div className="relative w-full h-full bg-black min-h-[420px] flex flex-col rounded-[2.5rem] overflow-hidden">
-                    {/* Video stream */}
-                    <video
-                      ref={videoRef}
-                      className="flex-1 w-full h-full object-cover"
-                      autoPlay
-                      playsInline
-                      muted
-                    />
 
-                    {/* Scanning line animation */}
-                    <div className="absolute top-0 left-0 w-full h-1 bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)] animate-scan z-10" />
-
-                    {/* Detected code indicator */}
-                    {barcodeResult && (
-                      <div className="absolute top-4 left-0 right-0 flex justify-center z-20 px-6">
-                        <div className="bg-emerald-500/90 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          Code détecté : {barcodeResult}
-                        </div>
+          {/* Barcode scan tab */}
+          <TabsContent value="scan" className="mt-4 focus-visible:outline-none">
+            <div className="glass-card overflow-hidden">
+              {isScanningBarcode ? (
+                <div className="relative bg-black min-h-[400px] flex flex-col rounded-[1.25rem] overflow-hidden">
+                  <video ref={videoRef} className="w-full h-full object-cover flex-1" autoPlay playsInline muted />
+                  {/* Scan line */}
+                  <div className="absolute top-0 left-0 w-full h-0.5 bg-primary/80 shadow-[0_0_12px_rgba(194,75,102,0.8)] animate-[scanLine_2s_ease-in-out_infinite]" />
+                  {/* Viewfinder */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-64 h-40 border-2 border-primary/60 rounded-xl">
+                      <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-primary rounded-tl-lg -translate-x-px -translate-y-px" />
+                      <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-primary rounded-tr-lg translate-x-px -translate-y-px" />
+                      <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-primary rounded-bl-lg -translate-x-px translate-y-px" />
+                      <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-primary rounded-br-lg translate-x-px translate-y-px" />
+                    </div>
+                  </div>
+                  {/* Detected badge */}
+                  {barcodeResult && (
+                    <div className="absolute top-4 inset-x-0 flex justify-center z-20 px-4">
+                      <div className="glass-subtle rounded-full px-4 py-2 flex items-center gap-2 text-sm font-semibold text-emerald-500">
+                        <CheckCircle className="w-4 h-4" /> {barcodeResult}
                       </div>
-                    )}
-
-                    {/* Confirm button */}
-                    <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 px-6">
-                      <Button 
-                        onClick={handleConfirmScan}
-                        className={`w-full max-w-xs rounded-2xl h-14 font-bold shadow-2xl border-2 border-white/20 text-white ${barcodeResult ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
-                      >
-                        <CheckCircle className="mr-2 h-5 w-5" />
-                        {barcodeResult ? 'Analyser ce produit' : 'Confirmer la capture'}
-                      </Button>
                     </div>
-
-                    {/* Viewfinder overlay */}
-                    <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
-                       <div className="w-64 h-40 border-2 border-rose-400/50 rounded-xl shadow-[0_0_20px_rgba(244,63,94,0.2)]" />
-                    </div>
-
-                    {/* Close button */}
-                    <Button 
-                      size="icon"
-                      variant="destructive" 
+                  )}
+                  {/* Action buttons */}
+                  <div className="absolute bottom-5 inset-x-0 flex gap-3 justify-center px-5 z-20">
+                    <Button
                       onClick={() => { stopCamera(); setIsScanningBarcode(false) }}
-                      className="absolute top-4 right-4 rounded-full h-10 w-10 z-20 shadow-lg"
+                      variant="ghost"
+                      size="icon"
+                      className="w-11 h-11 rounded-xl glass-subtle text-white/80"
                     >
                       <X className="h-5 w-5" />
                     </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-16 text-center group">
-                    <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-rose-100 group-hover:scale-110 transition-transform">
-                      <ScanLine className="w-10 h-10 text-rose-500" />
-                    </div>
-                    {barcodeResult && (
-                      <div className="mb-4 text-sm text-emerald-600 font-semibold bg-emerald-50 px-4 py-2 rounded-full">
-                        Dernier code : {barcodeResult}
-                      </div>
-                    )}
-                    <Button 
-                      onClick={() => { setBarcodeResult(null); setIsScanningBarcode(true) }} 
-                      size="lg" 
-                      className="rounded-2xl px-10 h-14 bg-rose-500 hover:bg-rose-600 shadow-rose-200 shadow-xl font-bold text-white"
+                    <Button
+                      onClick={handleConfirmScan}
+                      className={`flex-1 max-w-xs h-11 rounded-xl font-semibold shadow-lg
+                        ${barcodeResult
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+                          : "bg-gradient-to-r from-primary to-secondary text-white"
+                        }`}
                     >
-                      Activer la caméra
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {barcodeResult ? "Analyser ce produit" : "Confirmer la capture"}
                     </Button>
-                    <p className="mt-4 text-xs text-muted-foreground font-medium italic">Placez le code-barres EAN-13 dans le cadre</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              ) : (
+                <div className="p-10 flex flex-col items-center justify-center text-center gap-5">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20 flex items-center justify-center">
+                    <ScanLine className="w-8 h-8 text-primary/60" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold heading-font mb-1">Scanner le code-barres</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Placez le code EAN-13 de votre produit cosmétique dans le cadre.
+                    </p>
+                  </div>
+                  {barcodeResult && (
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                      Dernier : {barcodeResult}
+                    </div>
+                  )}
+                  <Button
+                    onClick={() => { setBarcodeResult(null); setIsScanningBarcode(true) }}
+                    className="rounded-xl h-11 px-6 font-semibold premium-button shadow-md shadow-primary/20"
+                  >
+                    Activer la caméra
+                  </Button>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Colonne Droite (Diagnostic) */}
-      <div className="flex flex-col h-full">
+      {/* ── Right – Results ── */}
+      <div>
         {!analysis ? (
-          <Card className="bg-white/40 backdrop-blur-sm border-dashed border-2 border-white/60 flex-1 flex flex-col items-center justify-center p-12 text-center rounded-[2.5rem] min-h-[420px]">
-            <div className="bg-white/50 p-4 rounded-full mb-4 shadow-sm">
-              <Search className="w-8 h-8 text-rose-300" />
+          <div className="glass-card p-10 flex flex-col items-center justify-center text-center min-h-[340px] gap-5 border-2 border-dashed border-border/50">
+            <div className="w-14 h-14 rounded-2xl bg-muted/40 flex items-center justify-center">
+              <Search className="w-7 h-7 text-muted-foreground/30" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800">Prêt pour l'analyse</h3>
-            <p className="text-muted-foreground text-sm max-w-[250px] mt-2 leading-relaxed">
-              Analyse personnalisée selon votre âge, type de peau et routine existante.
-            </p>
-          </Card>
+            <div>
+              <h3 className="font-bold heading-font text-lg mb-1">Prêt pour l'analyse</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px]">
+                Analyse personnalisée selon votre âge, type de peau et routine existante.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {["🧪 INCI Expert", "⚠️ Détection conflits", "🔄 Alternatives saines"].map(p => (
+                <span key={p} className="premium-badge text-xs">{p}</span>
+              ))}
+            </div>
+          </div>
         ) : (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-5 duration-700 h-full">
-            <Card className="bg-white/80 backdrop-blur-xl border-white/40 rounded-[2.5rem] overflow-hidden shadow-2xl">
-              <div className="bg-gradient-to-br from-gray-900 to-rose-950 text-white p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <p className="text-xs font-semibold text-rose-200/60 uppercase tracking-[0.2em] mb-2">Clean Beauty Score</p>
+          <div className="space-y-5 anim-fade-scale">
+            {/* Score card */}
+            <div className="glass-card overflow-hidden">
+              {/* Dark header */}
+              <div className="relative bg-gradient-to-br from-slate-900 to-rose-950 text-white p-6">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-300/60 mb-2">Clean Beauty Score</p>
+                  <div className="flex items-end justify-between gap-4 mb-5">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-6xl font-black">{analysis.safety_score}</span>
-                      <span className="text-xl text-rose-300/40">/100</span>
+                      <span className="text-6xl font-black heading-font">{analysis.safety_score}</span>
+                      <span className="text-lg text-white/30">/100</span>
                     </div>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${scoreBadgeClass(analysis.safety_score)}`}>
+                      {scoreLabel(analysis.safety_score)}
+                    </span>
                   </div>
-                  {getSafetyBadge(analysis.safety_score)}
-                </div>
-                <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${analysis.safety_score >= 80 ? 'bg-emerald-400' : analysis.safety_score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`} 
-                    style={{ width: `${analysis.safety_score}%` }} 
-                  />
+                  <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${scoreColor(analysis.safety_score)}`}
+                      style={{ width: `${analysis.safety_score}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-              
-              <CardContent className="p-8 space-y-8">
-                <p className="text-sm leading-relaxed text-gray-700 font-medium bg-rose-50/50 p-4 rounded-2xl italic border border-rose-100/50">
-                  "{analysis.summary}"
-                </p>
+
+              {/* Body */}
+              <div className="p-6 space-y-5">
+                {/* Summary */}
+                <div className="bg-muted/30 p-4 rounded-2xl border border-border/30 relative">
+                  <span className="text-4xl absolute -top-2 left-2 text-primary/10 font-serif leading-none">"</span>
+                  <p className="text-sm italic leading-relaxed text-foreground/80 pt-2">{analysis.summary}</p>
+                </div>
+
+                {/* Conflict warning */}
                 {analysis.conflict_warning && (
-                  <div className="bg-rose-50 text-rose-700 text-sm p-4 rounded-2xl flex items-start gap-3 border border-rose-100">
-                    <ShieldAlert className="w-5 h-5 shrink-0" />
+                  <div className="flex gap-3 p-4 rounded-2xl bg-rose-500/8 border border-rose-500/20 text-sm">
+                    <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-rose-800 mb-1 leading-none">Alerte Routine :</span>
-                      {analysis.conflict_warning}
+                      <p className="font-bold text-rose-600 dark:text-rose-400 mb-1">Alerte Routine</p>
+                      <p className="text-foreground/80">{analysis.conflict_warning}</p>
                     </div>
                   </div>
                 )}
-                {analysis.flagged_ingredients && analysis.flagged_ingredients.filter(i => i.safety !== 'safe').length > 0 && (
+
+                {/* Flagged ingredients */}
+                {analysis.flagged_ingredients?.filter(i => i.safety !== 'safe').length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Ingrédients à surveiller</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ingrédients à surveiller</p>
                     <div className="flex flex-wrap gap-2">
                       {analysis.flagged_ingredients.filter(i => i.safety !== 'safe').map((ing, idx) => (
-                        <span key={idx} className={`text-xs px-3 py-1 rounded-full font-medium ${ing.safety === 'harmful' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <span
+                          key={idx}
+                          className={`text-xs px-3 py-1 rounded-full font-semibold border ${
+                            ing.safety === 'harmful'
+                              ? 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:text-rose-400'
+                              : 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400'
+                          }`}
+                        >
                           {ing.name}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-            <Button 
-              variant="ghost" 
-              className="w-full h-14 rounded-2xl border-2 border-dashed border-gray-200 hover:border-rose-300 hover:bg-white/50 text-gray-500 transition-all" 
+              </div>
+            </div>
+
+            {/* Reset button */}
+            <Button
+              variant="ghost"
+              className="w-full h-11 rounded-xl border-2 border-dashed border-border/50 hover:border-primary/30
+                         hover:bg-white/30 dark:hover:bg-white/5 text-muted-foreground text-sm font-semibold"
               onClick={() => { setAnalysis(null); setInciText(""); setProductData(null); setBarcodeResult(null) }}
             >
-              Réinitialiser le scanner
+              <RefreshCw className="w-4 h-4 mr-2" /> Réinitialiser le scanner
             </Button>
           </div>
         )}

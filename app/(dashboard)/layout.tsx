@@ -8,24 +8,24 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/20 relative">
-      {/* Decorative background blobs for the entire dashboard */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary rounded-full mix-blend-multiply filter blur-[100px] opacity-20 pointer-events-none"></div>
-      <div className="absolute bottom-0 left-64 w-[500px] h-[500px] bg-primary/10 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 pointer-events-none"></div>
+    <div className="flex h-screen overflow-hidden bg-background relative">
+      {/* Ambient background – persistent across all dashboard pages */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-secondary/12 blur-[130px] opacity-40 animate-blob-2" />
+        <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full bg-primary/8 blur-[110px] opacity-30 animate-blob-1" />
+        <div className="absolute top-1/2 left-0 w-[500px] h-[500px] rounded-full bg-accent/10 blur-[100px] opacity-25" />
+      </div>
 
-      <Sidebar className="hidden md:flex w-72 flex-col fixed inset-y-0 z-50" />
-      <main className="md:pl-72 flex-1 w-full h-full overflow-y-auto">
-        <div className="p-8 max-w-6xl mx-auto relative z-10 w-full h-full">
+      {/* Sidebar */}
+      <Sidebar className="hidden md:flex w-72 flex-col fixed inset-y-0 z-40" />
+
+      {/* Main content */}
+      <main className="md:pl-72 flex-1 w-full h-full overflow-y-auto relative z-10 scroll-smooth">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 min-h-screen">
           {children}
         </div>
       </main>
